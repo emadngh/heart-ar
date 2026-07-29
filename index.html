@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Heart Anatomy AR</title>
+
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+  <!-- MindAR image tracking -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background: black;
+    }
+
+    #status {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+
+      width: min(85%, 420px);
+      padding: 12px 16px;
+
+      color: white;
+      text-align: center;
+      font-size: 15px;
+
+      background: rgba(35, 8, 18, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 14px;
+    }
+
+    #credit {
+      position: fixed;
+      right: 10px;
+      bottom: 10px;
+      z-index: 100;
+
+      max-width: 70%;
+      padding: 6px 9px;
+
+      color: white;
+      font-size: 10px;
+
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 8px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="status">
+    Point the camera at the printed heart target.
+  </div>
+
+  <div id="credit">
+    Heart model: replace this with the Sketchfab creator and licence.
+  </div>
+
+  <a-scene
+    mindar-image="
+      imageTargetSrc: ./targets.mind;
+      autoStart: true;
+      uiLoading: yes;
+      uiScanning: yes;
+    "
+    color-space="sRGB"
+    renderer="
+      colorManagement: true;
+      physicallyCorrectLights: true;
+      antialias: true;
+    "
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    embedded
+  >
+
+    <!-- Files loaded before the AR scene starts -->
+    <a-assets>
+      <a-asset-item
+        id="heartAsset"
+        src="./models/heart.glb"
+      ></a-asset-item>
+    </a-assets>
+
+    <!-- Camera -->
+    <a-camera
+      position="0 0 0"
+      look-controls="enabled: false"
+    ></a-camera>
+
+    <!-- Lighting -->
+    <a-entity
+      light="type: ambient; intensity: 1.4"
+    ></a-entity>
+
+    <a-entity
+      light="
+        type: directional;
+        intensity: 1.2;
+      "
+      position="1 2 2"
+    ></a-entity>
+
+    <!-- Everything inside this entity attaches to the target -->
+    <a-entity
+      id="heartTarget"
+      mindar-image-target="targetIndex: 0"
+    >
+
+      <!-- 3D heart -->
+      <a-gltf-model
+        id="heartModel"
+        src="#heartAsset"
+        position="0 0 0.15"
+        rotation="90 0 0"
+        scale="0.4 0.4 0.4"
+
+        animation__heartbeat="
+          property: scale;
+          from: 0.40 0.40 0.40;
+          to: 0.43 0.43 0.43;
+          dur: 420;
+          direction: alternate;
+          loop: true;
+          easing: easeInOutQuad;
+        "
+      ></a-gltf-model>
+
+      <!-- Starter anatomy labels -->
+
+      <a-text
+        value="Aorta"
+        position="0.05 0.48 0.4"
+        scale="0.32 0.32 0.32"
+        color="#FFFFFF"
+        align="center"
+        side="double"
+      ></a-text>
+
+      <a-text
+        value="Right Atrium"
+        position="-0.38 0.12 0.4"
+        scale="0.22 0.22 0.22"
+        color="#FFFFFF"
+        align="center"
+        side="double"
+      ></a-text>
+
+      <a-text
+        value="Left Ventricle"
+        position="0.32 -0.30 0.4"
+        scale="0.22 0.22 0.22"
+        color="#FFFFFF"
+        align="center"
+        side="double"
+      ></a-text>
+
+    </a-entity>
+  </a-scene>
+
+  <script>
+    const target = document.getElementById("heartTarget");
+    const status = document.getElementById("status");
+
+    target.addEventListener("targetFound", () => {
+      status.textContent =
+        "Heart detected — explore the anatomy.";
+    });
+
+    target.addEventListener("targetLost", () => {
+      status.textContent =
+        "Move the camera back toward the printed target.";
+    });
+  </script>
+
+</body>
+</html>
