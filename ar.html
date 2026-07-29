@@ -14,11 +14,86 @@
   <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
-  <!-- Plays animations contained inside glTF models -->
+  <!-- Plays the animation stored inside the GLTF -->
   <script src="https://cdn.jsdelivr.net/npm/aframe-extras@7.5.0/dist/aframe-extras.min.js"></script>
 
-  <!-- MindAR image tracking -->
+  <!-- MindAR -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+  <script>
+    /*
+      Your Sketchfab model contains a large internal offset.
+      This component removes that offset after the model loads.
+    */
+    AFRAME.registerComponent("fix-heart-model", {
+      init: function () {
+        this.el.addEventListener("model-loaded", () => {
+          const loadedScene = this.el.getObject3D("mesh");
+
+          if (!loadedScene) {
+            console.error("The loaded GLTF scene was not found.");
+            return;
+          }
+
+          /*
+            Find the top-level node from your actual GLTF file.
+            If the name is unavailable, use the first child.
+          */
+          const sketchfabRoot =
+            loadedScene.getObjectByName("Sketchfab_model") ||
+            loadedScene.children[0];
+
+          if (sketchfabRoot) {
+            console.log(
+              "Original Sketchfab position:",
+              sketchfabRoot.position
+            );
+
+            /*
+              Remove the huge position:
+              approximately 6.22, -1.79, -545.40
+            */
+            sketchfabRoot.position.set(0, 0, 0);
+            sketchfabRoot.updateMatrixWorld(true);
+
+            console.log(
+              "Sketchfab offset successfully removed."
+            );
+          } else {
+            console.warn(
+              "Sketchfab root was not found."
+            );
+          }
+
+          /*
+            Prevent incorrect culling after changing the model's
+            internal position.
+          */
+          loadedScene.traverse((object) => {
+            if (object.isMesh) {
+              object.frustumCulled = false;
+              object.visible = true;
+
+              if (object.material) {
+                const materials = Array.isArray(object.material)
+                  ? object.material
+                  : [object.material];
+
+                materials.forEach((material) => {
+                  material.side = THREE.DoubleSide;
+                  material.needsUpdate = true;
+                });
+              }
+            }
+          });
+
+          loadedScene.updateMatrixWorld(true);
+
+          this.el.emit("heart-ready");
+        });
+      }
+    });
+  </script>
 
   <style>
     html,
@@ -28,6 +103,7 @@
       margin: 0;
       padding: 0;
       overflow: hidden;
+      background: transparent;
     }
 
     a-scene,
@@ -49,7 +125,7 @@
       padding: 11px 15px;
 
       color: white;
-      background: rgba(0, 0, 0, 0.72);
+      background: rgba(0, 0, 0, 0.75);
       border-radius: 12px;
 
       font-family: Arial, sans-serif;
@@ -63,7 +139,9 @@
 
 <body>
 
-  <div id="status">Loading animated heart…</div>
+  <div id="status">
+    Loading animated heart…
+  </div>
 
   <a-scene
     mindar-image="
@@ -75,7 +153,6 @@
     color-space="sRGB"
     renderer="
       colorManagement: true;
-      physicallyCorrectLights: true;
       antialias: true;
       alpha: true;
     "
@@ -83,7 +160,7 @@
     device-orientation-permission-ui="enabled: false"
   >
 
-    <a-assets timeout="120000">
+    <a-assets timeout="180000">
 
       <a-asset-item
         id="heartAsset"
@@ -98,18 +175,18 @@
       look-controls="enabled: false"
     ></a-camera>
 
-    <!-- Lighting -->
+    <!-- Strong lighting so the model cannot appear black -->
     <a-entity
       light="
         type: ambient;
-        intensity: 1.8;
+        intensity: 3;
       "
     ></a-entity>
 
     <a-entity
       light="
         type: directional;
-        intensity: 1.8;
+        intensity: 2;
       "
       position="1 2 3"
     ></a-entity>
@@ -117,24 +194,27 @@
     <a-entity
       light="
         type: directional;
-        intensity: 1.2;
+        intensity: 1.5;
       "
       position="-2 1 2"
     ></a-entity>
 
-    <!-- Everything inside this entity attaches to the image target -->
+    <!-- Image target -->
     <a-entity
       id="heartTarget"
       mindar-image-target="targetIndex: 0"
     >
 
+      <!-- Animated heart -->
       <a-gltf-model
         id="heartModel"
         src="#heartAsset"
 
-        position="0 0 0.25"
+        position="0 0 0.2"
         rotation="0 0 0"
-        scale="100 100 100"
+        scale="0.006 0.006 0.006"
+
+        fix-heart-model
 
         animation-mixer="
           clip: Scene;
@@ -151,54 +231,87 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      const status = document.getElementById("status");
-      const scene = document.querySelector("a-scene");
-      const target = document.getElementById("heartTarget");
-      const model = document.getElementById("heartModel");
+      const status =
+        document.getElementById("status");
+
+      const scene =
+        document.querySelector("a-scene");
+
+      const target =
+        document.getElementById("heartTarget");
+
+      const model =
+        document.getElementById("heartModel");
+
+      let heartReady = false;
 
       scene.addEventListener("arReady", () => {
         status.textContent =
-          "Camera ready. Point it at the complete target image.";
+          "Camera ready. The heart is still loading…";
       });
 
       scene.addEventListener("arError", () => {
         status.textContent =
           "AR could not start. Check camera permission and HTTPS.";
+
+        status.style.background =
+          "rgba(160, 0, 0, 0.9)";
       });
 
       model.addEventListener("model-loaded", () => {
         status.textContent =
-          "Heart loaded. Point the camera at the target.";
+          "Heart downloaded. Correcting its position…";
 
-        const mesh = model.getObject3D("mesh");
+        const loadedScene =
+          model.getObject3D("mesh");
 
-        if (mesh) {
-          console.log("Heart model loaded successfully.");
-
+        if (loadedScene?.animations) {
           console.log(
             "Animation clips:",
-            mesh.animations
-              ? mesh.animations.map(animation => animation.name)
-              : "No animations found"
+            loadedScene.animations.map(
+              animation => animation.name
+            )
           );
         }
       });
 
-      model.addEventListener("model-error", event => {
-        console.error("Model loading error:", event.detail);
+      model.addEventListener("heart-ready", () => {
+        heartReady = true;
 
         status.textContent =
-          "Model failed to load. Check the GLTF, BIN, and images folder.";
+          "Heart ready. Point the camera at the complete target.";
+
+        status.style.background =
+          "rgba(0, 105, 50, 0.88)";
+
+        console.log(
+          "The heart is loaded, centred and ready."
+        );
+      });
+
+      model.addEventListener("model-error", (event) => {
+        console.error(
+          "GLTF loading error:",
+          event.detail
+        );
+
+        status.textContent =
+          "MODEL ERROR — check the GLTF, BIN and image files.";
+
+        status.style.background =
+          "rgba(160, 0, 0, 0.9)";
       });
 
       target.addEventListener("targetFound", () => {
-        status.textContent =
-          "Target detected — animated heart displayed.";
+        status.textContent = heartReady
+          ? "Target detected — animated heart displayed."
+          : "Target detected, but the heart is still loading.";
       });
 
       target.addEventListener("targetLost", () => {
-        status.textContent =
-          "Target lost. Point the camera at the complete image.";
+        status.textContent = heartReady
+          ? "Heart ready. Point the camera at the target again."
+          : "The heart is still loading…";
       });
     });
   </script>
