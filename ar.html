@@ -9,15 +9,10 @@
              maximum-scale=1.0, user-scalable=no"
   >
 
-  <title>Animated Heart AR</title>
+  <title>MindAR Red Box Test</title>
 
-  <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
-  <!-- Plays animations contained inside glTF models -->
-  <script src="https://cdn.jsdelivr.net/npm/aframe-extras@7.5.0/dist/aframe-extras.min.js"></script>
-
-  <!-- MindAR image tracking -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
@@ -45,7 +40,7 @@
       transform: translateX(-50%);
       z-index: 1000;
 
-      width: min(84%, 420px);
+      width: min(82%, 420px);
       padding: 11px 15px;
 
       color: white;
@@ -63,7 +58,7 @@
 
 <body>
 
-  <div id="status">Loading animated heart…</div>
+  <div id="status">Starting camera…</div>
 
   <a-scene
     mindar-image="
@@ -75,7 +70,6 @@
     color-space="sRGB"
     renderer="
       colorManagement: true;
-      physicallyCorrectLights: true;
       antialias: true;
       alpha: true;
     "
@@ -83,67 +77,27 @@
     device-orientation-permission-ui="enabled: false"
   >
 
-    <a-assets timeout="120000">
-
-      <a-asset-item
-        id="heartAsset"
-        src="./heart.gltf"
-      ></a-asset-item>
-
-    </a-assets>
-
-    <!-- AR camera -->
     <a-camera
       position="0 0 0"
       look-controls="enabled: false"
     ></a-camera>
 
-    <!-- Lighting -->
     <a-entity
-      light="
-        type: ambient;
-        intensity: 1.8;
-      "
-    ></a-entity>
-
-    <a-entity
-      light="
-        type: directional;
-        intensity: 1.8;
-      "
-      position="1 2 3"
-    ></a-entity>
-
-    <a-entity
-      light="
-        type: directional;
-        intensity: 1.2;
-      "
-      position="-2 1 2"
-    ></a-entity>
-
-    <!-- Everything inside this entity attaches to the image target -->
-    <a-entity
-      id="heartTarget"
+      id="testTarget"
       mindar-image-target="targetIndex: 0"
     >
 
-      <a-gltf-model
-        id="heartModel"
-        src="#heartAsset"
-
-        position="0 0 0.25"
-        rotation="0 0 0"
-        scale="100 100 100"
-
-        animation-mixer="
-          clip: Scene;
-          loop: repeat;
-          repetitions: Infinity;
-          timeScale: 1;
-          clampWhenFinished: false;
+      <a-box
+        position="0 0 0.2"
+        rotation="0 45 0"
+        scale="0.35 0.35 0.35"
+        color="#ff0000"
+        material="
+          color: #ff0000;
+          opacity: 1;
+          transparent: false;
         "
-      ></a-gltf-model>
+      ></a-box>
 
     </a-entity>
 
@@ -153,52 +107,26 @@
     document.addEventListener("DOMContentLoaded", () => {
       const status = document.getElementById("status");
       const scene = document.querySelector("a-scene");
-      const target = document.getElementById("heartTarget");
-      const model = document.getElementById("heartModel");
+      const target = document.getElementById("testTarget");
 
       scene.addEventListener("arReady", () => {
         status.textContent =
-          "Camera ready. Point it at the complete target image.";
+          "Camera ready. Point it at the full target image.";
       });
 
       scene.addEventListener("arError", () => {
         status.textContent =
-          "AR could not start. Check camera permission and HTTPS.";
-      });
-
-      model.addEventListener("model-loaded", () => {
-        status.textContent =
-          "Heart loaded. Point the camera at the target.";
-
-        const mesh = model.getObject3D("mesh");
-
-        if (mesh) {
-          console.log("Heart model loaded successfully.");
-
-          console.log(
-            "Animation clips:",
-            mesh.animations
-              ? mesh.animations.map(animation => animation.name)
-              : "No animations found"
-          );
-        }
-      });
-
-      model.addEventListener("model-error", event => {
-        console.error("Model loading error:", event.detail);
-
-        status.textContent =
-          "Model failed to load. Check the GLTF, BIN, and images folder.";
+          "AR failed to start. Check camera permission and HTTPS.";
       });
 
       target.addEventListener("targetFound", () => {
         status.textContent =
-          "Target detected — animated heart displayed.";
+          "Target detected. The red box should now be visible.";
       });
 
       target.addEventListener("targetLost", () => {
         status.textContent =
-          "Target lost. Point the camera at the complete image.";
+          "Target lost. Point the camera at the full image again.";
       });
     });
   </script>
